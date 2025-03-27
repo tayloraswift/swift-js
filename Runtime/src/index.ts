@@ -5,13 +5,13 @@ import {
     ref,
     pointer,
     TypedArray,
-    ImportedFunctions,
     MAIN_THREAD_TID,
 } from "./types.js";
 import * as JSValue from "./js-value.js";
 import { Memory } from "./memory.js";
 import { deserializeError, MainToWorkerMessage, MessageBroker, ResponseMessage, ITCInterface, serializeError, SwiftRuntimeThreadChannel, WorkerToMainMessage } from "./itc.js";
 import { decodeObjectRefs } from "./js-value.js";
+export { SwiftRuntimeThreadChannel };
 
 export type SwiftRuntimeOptions = {
     /**
@@ -181,7 +181,7 @@ export class SwiftRuntime {
     /** @deprecated Use `wasmImports` instead */
     importObjects = () => this.wasmImports;
 
-    get wasmImports(): ImportedFunctions {
+    get wasmImports(): WebAssembly.ModuleImports {
         let broker: MessageBroker | null = null;
         const getMessageBroker = (threadChannel: SwiftRuntimeThreadChannel) => {
             if (broker) return broker;
@@ -479,6 +479,13 @@ export class SwiftRuntime {
                 return obj instanceof constructor;
             },
 
+            swjs_value_equals: (lhs_ref: ref, rhs_ref: ref) => {
+                const memory = this.memory;
+                const lhs = memory.getObject(lhs_ref);
+                const rhs = memory.getObject(rhs_ref);
+                return lhs == rhs;
+            },
+
             swjs_create_function: (
                 host_func_id: number,
                 line: number,
@@ -516,6 +523,8 @@ export class SwiftRuntime {
                 // Call `.slice()` to copy the memory
                 return this.memory.retain(array.slice());
             },
+
+            swjs_create_object: () => { return this.memory.retain({}); },
 
             swjs_load_typed_array: (ref: ref, buffer: pointer) => {
                 const memory = this.memory;
@@ -566,7 +575,7 @@ export class SwiftRuntime {
                     return BigInt.asIntN(64, object);
                 }
             },
-            swjs_i64_to_bigint_slow: (lower, upper, signed) => {
+            swjs_i64_to_bigint_slow: (lower: number, upper: number, signed: number) => {
                 const value =
                     BigInt.asUintN(32, BigInt(lower)) +
                     (BigInt.asUintN(32, BigInt(upper)) << BigInt(32));
@@ -577,7 +586,7 @@ export class SwiftRuntime {
             swjs_unsafe_event_loop_yield: () => {
                 throw new UnsafeEventLoopYield();
             },
-            swjs_send_job_to_main_thread: (unowned_job) => {
+            swjs_send_job_to_main_thread: (unowned_job: number) => {
                 this.postMessageToMainThread({ type: "job", data: unowned_job });
             },
             swjs_listen_message_from_main_thread: () => {
@@ -607,10 +616,10 @@ export class SwiftRuntime {
                     }
                 });
             },
-            swjs_wake_up_worker_thread: (tid) => {
+            swjs_wake_up_worker_thread: (tid: number) => {
                 this.postMessageToWorkerThread(tid, { type: "wake" });
             },
-            swjs_listen_message_from_worker_thread: (tid) => {
+            swjs_listen_message_from_worker_thread: (tid: number) => {
                 const threadChannel = this.options.threadChannel;
                 if (!(threadChannel && "listenMessageFromWorkerThread" in threadChannel)) {
                     throw new Error(
@@ -639,7 +648,7 @@ export class SwiftRuntime {
                     },
                 );
             },
-            swjs_terminate_worker_thread: (tid) => {
+            swjs_terminate_worker_thread: (tid: number) => {
                 const threadChannel = this.options.threadChannel;
                 if (threadChannel && "terminateWorkerThread" in threadChannel) {
                     threadChannel.terminateWorkerThread?.(tid);
