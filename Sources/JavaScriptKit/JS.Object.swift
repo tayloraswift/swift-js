@@ -7,25 +7,7 @@ extension JS
 }
 extension JS.Object
 {
-    /// Access the `name` member dynamically through JavaScript and Swift runtime bridge
-    /// library.
-    /// -   Parameter name:
-    ///     The name of this object's member to access.
-    /// -   Returns:
-    ///     The value of the `name` member of this object.
-    public subscript(_ name:JS.StringConstant) -> JSValue
-    {
-        get
-        {
-            self.get(name)
-        }
-        set(value)
-        {
-            self.set(name, to: value)
-        }
-    }
-
-    private
+    public
     func get(_ name:JS.StringConstant) -> JSValue
     {
         var raw:RawJSValue = .init()
@@ -34,7 +16,7 @@ extension JS.Object
         return raw.jsValue
     }
 
-    private
+    public
     func set(_ name:JS.StringConstant, to value:JSValue)
     {
         value.withRawJSValue

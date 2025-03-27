@@ -33,8 +33,3 @@ extension JS.StringConstant
         self.init(reference: reference)
     }
 }
-extension JS.StringConstant:ExpressibleByStringLiteral
-{
-    @inlinable public convenience
-    init(stringLiteral:String) { self.init(encoding: stringLiteral) }
-}
